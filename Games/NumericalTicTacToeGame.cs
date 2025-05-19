@@ -154,7 +154,7 @@ namespace IFN584_ASS2.Games
             {
                 Board[move.Row][move.Col] = 0;
                 UsedNumbers.Remove(move.Value);
-                LastCommandWasUndo = true;
+                LastCommandWasUtility = true;
                 ConsoleRenderer.ShowMessage($"↩️ Undo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
             }
         }
@@ -170,7 +170,7 @@ namespace IFN584_ASS2.Games
             {
                 Board[move.Row][move.Col] = move.Value;
                 UsedNumbers.Add(move.Value);
-                LastCommandWasUndo = false;
+                LastCommandWasUtility = false;
                 ConsoleRenderer.ShowMessage($"↪️ Redo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
             }
         }

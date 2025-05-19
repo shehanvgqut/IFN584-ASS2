@@ -1,10 +1,6 @@
 ﻿using IFN584_ASS2.UserUI;
 using IFN584_ASS2.Utilities;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace IFN584_ASS2.Core
 {
@@ -13,7 +9,9 @@ namespace IFN584_ASS2.Core
         protected Player CurrentPlayer = new("Player 1", true);
         protected Player OtherPlayer = new("Player 2", false);
         protected GameState GameState = new();
-        protected bool LastCommandWasUndo = false;
+        protected bool LastCommandWasUtility = false; // Includes undo, redo, save
+
+        public Player ComputerPlayer { get; protected set; }
 
         public void Play()
         {
@@ -36,15 +34,18 @@ namespace IFN584_ASS2.Core
                 {
                     ConsoleRenderer.PromptPlayer(CurrentPlayer.Name);
                     string? input = Console.ReadLine()?.Trim().ToLower();
+                    LastCommandWasUtility = false; // Reset before each new input
 
                     switch (input)
                     {
                         case "undo":
                             Undo();
+                            LastCommandWasUtility = true;
                             validInput = true;
                             break;
                         case "redo":
                             Redo();
+                            LastCommandWasUtility = true;
                             validInput = true;
                             break;
                         case "help":
@@ -52,6 +53,7 @@ namespace IFN584_ASS2.Core
                             break;
                         case "save":
                             SaveGame();
+                            LastCommandWasUtility = true;
                             validInput = true;
                             break;
                         default:
@@ -80,7 +82,6 @@ namespace IFN584_ASS2.Core
                                     }
 
                                     MakeMoveWithCoords(num, row, col);
-                                    LastCommandWasUndo = false; // Reset the flag on real move
                                     validInput = true;
                                 }
                                 catch (Exception ex)
@@ -88,15 +89,19 @@ namespace IFN584_ASS2.Core
                                     ConsoleRenderer.ShowError($"Error: {ex.Message}");
                                 }
                             }
+                            else
+                            {
+                                ConsoleRenderer.ShowError("🚫 Invalid command or input.");
+                            }
                             break;
                     }
                 }
 
                 if (!IsGameOver())
                 {
-                    if (LastCommandWasUndo)
+                    if (LastCommandWasUtility)
                     {
-                        LastCommandWasUndo = false;
+                        LastCommandWasUtility = false;
                     }
                     else
                     {
@@ -158,7 +163,7 @@ namespace IFN584_ASS2.Core
             (CurrentPlayer, OtherPlayer) = (OtherPlayer, CurrentPlayer);
         }
 
-        #region Virtual implementation
+        #region Virtual Implementation
 
         protected virtual void SaveGame()
         {
@@ -179,7 +184,6 @@ namespace IFN584_ASS2.Core
             }
             else
             {
-                LastCommandWasUndo = true;
                 ConsoleRenderer.ShowMessage($"↩️ Undo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
             }
         }
@@ -191,12 +195,12 @@ namespace IFN584_ASS2.Core
             {
                 ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
             }
+            else
+            {
+                ConsoleRenderer.ShowMessage($"↪️ Redo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
+            }
         }
 
         #endregion
-
-        public Player ComputerPlayer { get; protected set; }
-        protected bool LastCommandWasUtility = false; // includes undo, save, redo
-
     }
 }

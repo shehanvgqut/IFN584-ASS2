@@ -10,35 +10,45 @@ namespace IFN584_ASS2.Games
     public class NotaktoGame : GameTemplate
     {
         public List<char[][]> Boards { get; set; } = new();
-        private GameMode gameMode;
+        public GameMode GameMode { get; set; } = GameMode.HumanVsHuman;
 
         public NotaktoGame(GameMode mode = GameMode.HumanVsHuman)
         {
-            gameMode = mode;
-        }
+            GameMode = mode;
 
-        protected override void Initialize()
-        {
-            Boards.Clear();
-            for (int b = 0; b < 3; b++)
-            {
-                var board = new char[3][] {
-                    new char[3] { ' ', ' ', ' ' },
-                    new char[3] { ' ', ' ', ' ' },
-                    new char[3] { ' ', ' ', ' ' }
-                };
-                Boards.Add(board);
-            }
-
-            if (gameMode == GameMode.HumanVsComputer)
+            if (GameMode == GameMode.HumanVsComputer)
             {
                 Player2.IsHuman = false;
                 ComputerPlayer = Player2;
             }
+        }
+
+        public NotaktoGame() : this(GameMode.HumanVsHuman) { }
+
+        protected override void Initialize()
+        {
+            // Only create fresh boards if Boards is empty (new game)
+            if (Boards == null || Boards.Count != 3)
+            {
+                Boards = new List<char[][]>();
+                for (int b = 0; b < 3; b++)
+                {
+                    var board = new char[3][]
+                    {
+                        new char[3] { ' ', ' ', ' ' },
+                        new char[3] { ' ', ' ', ' ' },
+                        new char[3] { ' ', ' ', ' ' }
+                    };
+                    Boards.Add(board);
+                }
+            }
+
+            // Restore computer player after deserialization
+            if (Player2 != null && !Player2.IsHuman)
+                ComputerPlayer = Player2;
 
             ConsoleRenderer.RenderMessage("🧩 Notakto (3-board X-only Tic-Tac-Toe). Last to complete a line loses.");
         }
-
 
         protected override void DisplayBoard()
         {
@@ -104,7 +114,7 @@ namespace IFN584_ASS2.Games
 
         protected override bool IsComputerTurn()
         {
-            return gameMode == GameMode.HumanVsComputer && CurrentPlayer == ComputerPlayer;
+            return GameMode == GameMode.HumanVsComputer && CurrentPlayer == ComputerPlayer;
         }
 
         protected override void MakeComputerMove()
@@ -166,7 +176,7 @@ namespace IFN584_ASS2.Games
             if (move != null)
             {
                 Boards[move.Value][move.Row][move.Col] = ' ';
-                LastCommandWasUndo = true;
+                LastCommandWasUtility = true;
                 ConsoleRenderer.ShowMessage("↩️ Undo successful. It's still your turn.", ConsoleColor.Cyan);
             }
             else
@@ -181,7 +191,7 @@ namespace IFN584_ASS2.Games
             if (move != null)
             {
                 Boards[move.Value][move.Row][move.Col] = 'X';
-                LastCommandWasUndo = false;
+                LastCommandWasUtility = false;
                 ConsoleRenderer.ShowMessage("↪️ Redo successful. It's still your turn.", ConsoleColor.Cyan);
             }
             else
@@ -189,6 +199,5 @@ namespace IFN584_ASS2.Games
                 ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
             }
         }
-
     }
 }
