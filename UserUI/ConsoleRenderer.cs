@@ -11,17 +11,16 @@ namespace IFN584_ASS2.UserUI
         /// <summary>
         /// Renders a 2D game board (any value type: int, char, string).
         /// </summary>
-        public static void RenderBoard<T>(T[,] board)
+        public static void RenderBoard<T>(T[][] board)
         {
-            int size = board.GetLength(0);
             Console.WriteLine();
 
-            for (int row = 0; row < size; row++)
+            for (int row = 0; row < board.Length; row++)
             {
                 Console.Write("|");
-                for (int col = 0; col < size; col++)
+                for (int col = 0; col < board[row].Length; col++)
                 {
-                    var cell = board[row, col];
+                    var cell = board[row][col];
                     string content = EqualityComparer<T>.Default.Equals(cell, default(T)) ? "  " : $"{cell,2}";
                     Console.Write($" {content} |");
                 }
@@ -30,6 +29,7 @@ namespace IFN584_ASS2.UserUI
 
             Console.WriteLine();
         }
+
 
         /// <summary>
         /// Displays a message with optional color.
@@ -72,6 +72,13 @@ namespace IFN584_ASS2.UserUI
         {
             RenderMessage("✅ " + message, ConsoleColor.Green);
         }
+        public static void ShowMessage(string message, ConsoleColor color = ConsoleColor.White)
+        {
+            Console.ForegroundColor = color;
+            Console.WriteLine(message);
+            Console.ResetColor();
+        }
+
     }
 }
     

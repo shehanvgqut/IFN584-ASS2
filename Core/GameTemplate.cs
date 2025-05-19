@@ -13,6 +13,7 @@ namespace IFN584_ASS2.Core
         protected Player CurrentPlayer = new("Player 1", true);
         protected Player OtherPlayer = new("Player 2", false);
         protected GameState GameState = new();
+        protected bool LastCommandWasUndo = false;
 
         public void Play()
         {
@@ -22,6 +23,14 @@ namespace IFN584_ASS2.Core
             {
                 DisplayBoard();
 
+                if (IsComputerTurn())
+                {
+                    MakeComputerMove();
+                    if (!IsGameOver())
+                        SwitchPlayers();
+                    continue;
+                }
+
                 bool validInput = false;
                 while (!validInput)
                 {
@@ -30,56 +39,127 @@ namespace IFN584_ASS2.Core
 
                     switch (input)
                     {
-                        case "undo": Undo(); validInput = true; break;
-                        case "redo": Redo(); validInput = true; break;
-                        case "help": ShowHelp(); break;
-                        case "save": SaveGame(); validInput = true; break;
+                        case "undo":
+                            Undo();
+                            validInput = true;
+                            break;
+                        case "redo":
+                            Redo();
+                            validInput = true;
+                            break;
+                        case "help":
+                            ShowHelp();
+                            break;
+                        case "save":
+                            SaveGame();
+                            validInput = true;
+                            break;
                         default:
                             if (int.TryParse(input, out int num))
                             {
                                 try
                                 {
-                                    MakeMove(num);
+                                    if (!IsMoveNumberValid(num))
+                                    {
+                                        ConsoleRenderer.ShowError("🚫 That number is invalid or already used. Try another.");
+                                        break;
+                                    }
+
+                                    Console.Write("Enter row (0-2): ");
+                                    if (!int.TryParse(Console.ReadLine(), out int row) || row < 0 || row > 2)
+                                    {
+                                        ConsoleRenderer.ShowError("🚫 Invalid row. Please enter 0, 1, or 2.");
+                                        break;
+                                    }
+
+                                    Console.Write("Enter col (0-2): ");
+                                    if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > 2)
+                                    {
+                                        ConsoleRenderer.ShowError("🚫 Invalid column. Please enter 0, 1, or 2.");
+                                        break;
+                                    }
+
+                                    MakeMoveWithCoords(num, row, col);
+                                    LastCommandWasUndo = false; // Reset the flag on real move
                                     validInput = true;
-                                }
-                                catch (IndexOutOfRangeException)
-                                {
-                                    ConsoleRenderer.ShowError("You entered a position outside the board. Try again.");
                                 }
                                 catch (Exception ex)
                                 {
                                     ConsoleRenderer.ShowError($"Error: {ex.Message}");
                                 }
                             }
-                            else
-                            {
-                                ConsoleRenderer.ShowError("Invalid input. Please enter a number or type 'help'.");
-                            }
                             break;
                     }
                 }
 
                 if (!IsGameOver())
-                    SwitchPlayers();
+                {
+                    if (LastCommandWasUndo)
+                    {
+                        LastCommandWasUndo = false;
+                    }
+                    else
+                    {
+                        SwitchPlayers();
+                    }
+                }
             }
 
             DisplayBoard();
             AnnounceResult();
         }
 
+        // 🔓 Expose players and game state for serialization
+        public Player Player1
+        {
+            get => CurrentPlayer;
+            set => CurrentPlayer = value;
+        }
+
+        public Player Player2
+        {
+            get => OtherPlayer;
+            set => OtherPlayer = value;
+        }
+
+        public GameState State
+        {
+            get => GameState;
+            set => GameState = value;
+        }
 
         protected abstract void Initialize();
         protected abstract void DisplayBoard();
         protected abstract void MakeMove(int input);
         protected abstract bool IsGameOver();
         protected abstract void AnnounceResult();
-        
+
+        protected virtual bool IsComputerTurn()
+        {
+            return false;
+        }
+
+        protected virtual bool IsMoveNumberValid(int input)
+        {
+            return true;
+        }
+
+        protected virtual void MakeMoveWithCoords(int input, int row, int col)
+        {
+            throw new NotImplementedException("MakeMoveWithCoords must be overridden in derived classes.");
+        }
+
+        protected virtual void MakeComputerMove()
+        {
+        }
+
         private void SwitchPlayers()
         {
             (CurrentPlayer, OtherPlayer) = (OtherPlayer, CurrentPlayer);
         }
 
         #region Virtual implementation
+
         protected virtual void SaveGame()
         {
             FileManager.Save(this);
@@ -92,15 +172,31 @@ namespace IFN584_ASS2.Core
 
         protected virtual void Undo()
         {
-            GameState.Undo();
+            var move = GameState.Undo();
+            if (move == null)
+            {
+                ConsoleRenderer.ShowMessage("ℹ️ No moves to undo.", ConsoleColor.Yellow);
+            }
+            else
+            {
+                LastCommandWasUndo = true;
+                ConsoleRenderer.ShowMessage($"↩️ Undo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
+            }
         }
 
         protected virtual void Redo()
         {
-            GameState.Redo();
+            var move = GameState.Redo();
+            if (move == null)
+            {
+                ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
+            }
         }
 
         #endregion
-    }
 
+        public Player ComputerPlayer { get; protected set; }
+        protected bool LastCommandWasUtility = false; // includes undo, save, redo
+
+    }
 }

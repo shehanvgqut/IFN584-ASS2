@@ -10,7 +10,7 @@ namespace IFN584_ASS2.Core
     {
         public string Name { get; }
         public bool IsOddPlayer { get; }
-
+        public bool IsHuman { get; set; } = true; 
         public Player(string name, bool isOddPlayer)
         {
             Name = name;

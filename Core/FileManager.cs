@@ -34,11 +34,12 @@ namespace IFN584_ASS2.Core
 
             string json = File.ReadAllText(SaveFilePath);
 
-            // For now, assume the game being loaded is Numerical Tic-Tac-Toe
+            // ✅ Works if you're always saving a NumericalTicTacToeGame
             return JsonSerializer.Deserialize<NumericalTicTacToeGame>(json, new JsonSerializerOptions
             {
                 IncludeFields = true
             });
         }
     }
+
 }
