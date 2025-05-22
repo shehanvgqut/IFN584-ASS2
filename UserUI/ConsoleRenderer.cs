@@ -78,6 +78,26 @@ namespace IFN584_ASS2.UserUI
             Console.WriteLine(message);
             Console.ResetColor();
         }
+        public static void RenderBoard(char[][] board, bool baseOne)
+        {
+            int size = board.Length;
+            Console.Write("    ");
+            for (int c = 0; c < size; c++)
+                Console.Write($"{(baseOne ? c + 1 : c),3} ");
+            Console.WriteLine();
+
+            for (int r = 0; r < size; r++)
+            {
+                Console.Write($"{(baseOne ? r + 1 : r),3} ");
+                for (int c = 0; c < size; c++)
+                {
+                    Console.Write($" {board[r][c],2} ");
+                }
+                Console.WriteLine();
+            }
+
+            Console.WriteLine();
+        }
 
     }
 }

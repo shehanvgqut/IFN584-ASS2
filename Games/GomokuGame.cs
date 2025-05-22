@@ -3,6 +3,7 @@ using IFN584_ASS2.Enums;
 using IFN584_ASS2.UserUI;
 using IFN584_ASS2.Utilities;
 using System;
+using System.Collections.Generic;
 
 namespace IFN584_ASS2.Games
 {
@@ -29,8 +30,8 @@ namespace IFN584_ASS2.Games
 
         protected override void Initialize()
         {
-            // Only reinitialize if the board wasn't restored from file
-            if (Board == null || Board.Length != Size || Board[0] == null || Board[0].Length != Size || Board[0][0] == '\0')
+            // Avoid re-initializing if loaded from file
+            if (Board[0] == null || Board[0][0] == '\0')
             {
                 for (int i = 0; i < Size; i++)
                 {
@@ -46,29 +47,30 @@ namespace IFN584_ASS2.Games
             ConsoleRenderer.RenderMessage("🔳 Gomoku (Five in a Row). Get 5 of your symbol in a row.");
         }
 
-
         protected override void DisplayBoard()
         {
-            ConsoleRenderer.RenderBoard(Board);
+            ConsoleRenderer.RenderBoard(Board, baseOne: true);
         }
 
         protected override bool IsMoveNumberValid(int input) => true;
 
         protected override void MakeMove(int _)
         {
-            Console.Write("Enter row (0-14): ");
-            if (!int.TryParse(Console.ReadLine(), out int row) || row < 0 || row >= Size)
+            Console.Write("Enter row (1-15): ");
+            if (!int.TryParse(Console.ReadLine(), out int row) || row < 1 || row > Size)
             {
-                ConsoleRenderer.ShowError("🚫 Invalid row. Must be between 0 and 14.");
+                ConsoleRenderer.ShowError("🚫 Invalid row. Must be between 1 and 15.");
                 return;
             }
 
-            Console.Write("Enter col (0-14): ");
-            if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col >= Size)
+            Console.Write("Enter col (1-15): ");
+            if (!int.TryParse(Console.ReadLine(), out int col) || col < 1 || col > Size)
             {
-                ConsoleRenderer.ShowError("🚫 Invalid column. Must be between 0 and 14.");
+                ConsoleRenderer.ShowError("🚫 Invalid column. Must be between 1 and 15.");
                 return;
             }
+
+            row--; col--;
 
             if (Board[row][col] != '.')
             {
@@ -82,6 +84,7 @@ namespace IFN584_ASS2.Games
 
         protected override void MakeMoveWithCoords(int _, int row, int col)
         {
+            row--; col--; // 1-based to 0-based
             if (Board[row][col] != '.')
                 throw new Exception("🚫 That spot is already taken.");
 
@@ -96,17 +99,16 @@ namespace IFN584_ASS2.Games
 
         protected override void MakeComputerMove()
         {
-            // 1. Try to win
             var winMove = FindWinningMove(CurrentSymbol);
             if (winMove != null)
             {
-                Console.WriteLine($"🤖 Computer placed {CurrentSymbol} at ({winMove.Value.row}, {winMove.Value.col}) — Winning move!");
-                Board[winMove.Value.row][winMove.Value.col] = CurrentSymbol;
-                GameState.RecordMove(new Move(winMove.Value.row, winMove.Value.col, CurrentSymbol));
+                var (r, c) = winMove.Value;
+                Console.WriteLine($"🤖 Computer placed {CurrentSymbol} at ({r + 1}, {c + 1}) — Winning move!");
+                Board[r][c] = CurrentSymbol;
+                GameState.RecordMove(new Move(r, c, CurrentSymbol));
                 return;
             }
 
-            // 2. Otherwise, pick a random empty cell
             var emptyCells = new List<(int row, int col)>();
             for (int r = 0; r < Board.Length; r++)
                 for (int c = 0; c < Board[r].Length; c++)
@@ -117,7 +119,7 @@ namespace IFN584_ASS2.Games
             {
                 var rand = new Random();
                 var move = emptyCells[rand.Next(emptyCells.Count)];
-                Console.WriteLine($"🤖 Computer placed {CurrentSymbol} at ({move.row}, {move.col})");
+                Console.WriteLine($"🤖 Computer placed {CurrentSymbol} at ({move.row + 1}, {move.col + 1})");
                 Board[move.row][move.col] = CurrentSymbol;
                 GameState.RecordMove(new Move(move.row, move.col, CurrentSymbol));
             }
@@ -127,6 +129,27 @@ namespace IFN584_ASS2.Games
             }
         }
 
+        private (int row, int col)? FindWinningMove(char symbol)
+        {
+            for (int r = 0; r < Size; r++)
+            {
+                for (int c = 0; c < Size; c++)
+                {
+                    if (Board[r][c] != '.') continue;
+
+                    Board[r][c] = symbol;
+                    bool win = CheckDirection(r, c, 1, 0, symbol) ||
+                               CheckDirection(r, c, 0, 1, symbol) ||
+                               CheckDirection(r, c, 1, 1, symbol) ||
+                               CheckDirection(r, c, 1, -1, symbol);
+                    Board[r][c] = '.';
+
+                    if (win)
+                        return (r, c);
+                }
+            }
+            return null;
+        }
 
         protected override bool IsGameOver()
         {
@@ -205,36 +228,9 @@ namespace IFN584_ASS2.Games
                 ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
             }
         }
-        private (int row, int col)? FindWinningMove(char symbol)
-        {
-            for (int r = 0; r < Board.Length; r++)
-            {
-                for (int c = 0; c < Board[r].Length; c++)
-                {
-                    if (Board[r][c] != '.') continue;
 
-                    // Try placing symbol temporarily
-                    Board[r][c] = symbol;
-
-                    bool wins = CheckDirection(r, c, 1, 0, symbol) ||
-                                CheckDirection(r, c, 0, 1, symbol) ||
-                                CheckDirection(r, c, 1, 1, symbol) ||
-                                CheckDirection(r, c, 1, -1, symbol);
-
-                    Board[r][c] = '.'; // undo test move
-
-                    if (wins)
-                        return (r, c);
-                }
-            }
-
-            return null; // no winning move found
-        }
-
-
-        // ✅ Enables dynamic row/col range in GameTemplate
-        protected override int MaxRow => 14;
-        protected override int MaxCol => 14;
+        protected override int MaxRow => 15;
+        protected override int MaxCol => 15;
         public override void Play()
         {
             Initialize();
@@ -278,23 +274,23 @@ namespace IFN584_ASS2.Games
                             ShowHelp();
                             break;
                         default:
-                            Console.Write($"Enter row (0-{MaxRow}): ");
-                            if (!int.TryParse(command, out int row) || row < 0 || row > MaxRow)
+                            Console.Write("Enter row (1–15): ");
+                            if (!int.TryParse(command, out int row) || row < 1 || row > 15)
                             {
-                                ConsoleRenderer.ShowError($"🚫 Invalid row. Please enter 0 to {MaxRow}.");
+                                ConsoleRenderer.ShowError("🚫 Invalid row. Enter 1 to 15.");
                                 continue;
                             }
 
-                            Console.Write($"Enter col (0-{MaxCol}): ");
-                            if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > MaxCol)
+                            Console.Write("Enter col (1–15): ");
+                            if (!int.TryParse(Console.ReadLine(), out int col) || col < 1 || col > 15)
                             {
-                                ConsoleRenderer.ShowError($"🚫 Invalid column. Please enter 0 to {MaxCol}.");
+                                ConsoleRenderer.ShowError("🚫 Invalid column. Enter 1 to 15.");
                                 continue;
                             }
 
                             try
                             {
-                                MakeMoveWithCoords(0, row, col);
+                                MakeMoveWithCoords(0, row, col); // 0 is ignored
                                 validInput = true;
                             }
                             catch (Exception ex)
@@ -317,7 +313,6 @@ namespace IFN584_ASS2.Games
             DisplayBoard();
             AnnounceResult();
         }
-
 
     }
 }
