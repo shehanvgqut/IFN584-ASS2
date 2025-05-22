@@ -19,6 +19,7 @@ namespace IFN584_ASS2
                 var loadedGame = FileManager.Load();
                 if (loadedGame != null)
                 {
+                    //loadedGame.ShowBoard();  // ✅ call public wrapper method
                     loadedGame.Play();
                     return;
                 }
@@ -46,7 +47,7 @@ namespace IFN584_ASS2
                 else if (choice == "2")
                 {
                     GameMode selectedMode = PromptForMode("Notakto");
-                    game = new NotaktoGame(selectedMode); // ✅ FIXED: use selected mode
+                    game = new NotaktoGame(selectedMode);
                     break;
                 }
                 else if (choice == "3")

@@ -9,11 +9,15 @@ namespace IFN584_ASS2.Core
         protected Player CurrentPlayer = new("Player 1", true);
         protected Player OtherPlayer = new("Player 2", false);
         protected GameState GameState = new();
-        protected bool LastCommandWasUtility = false; // Includes undo, redo, save
+        protected bool LastCommandWasUtility = false;
 
         public Player ComputerPlayer { get; protected set; }
 
-        public void Play()
+        // 👇 Default limits for 3×3 games
+        protected virtual int MaxRow => 2;
+        protected virtual int MaxCol => 2;
+
+        public virtual void Play()
         {
             Initialize();
 
@@ -34,7 +38,7 @@ namespace IFN584_ASS2.Core
                 {
                     ConsoleRenderer.PromptPlayer(CurrentPlayer.Name);
                     string? input = Console.ReadLine()?.Trim().ToLower();
-                    LastCommandWasUtility = false; // Reset before each new input
+                    LastCommandWasUtility = false;
 
                     switch (input)
                     {
@@ -67,17 +71,17 @@ namespace IFN584_ASS2.Core
                                         break;
                                     }
 
-                                    Console.Write("Enter row (0-2): ");
-                                    if (!int.TryParse(Console.ReadLine(), out int row) || row < 0 || row > 2)
+                                    Console.Write($"Enter row (0-{MaxRow}): ");
+                                    if (!int.TryParse(Console.ReadLine(), out int row) || row < 0 || row > MaxRow)
                                     {
-                                        ConsoleRenderer.ShowError("🚫 Invalid row. Please enter 0, 1, or 2.");
+                                        ConsoleRenderer.ShowError($"🚫 Invalid row. Please enter 0 to {MaxRow}.");
                                         break;
                                     }
 
-                                    Console.Write("Enter col (0-2): ");
-                                    if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > 2)
+                                    Console.Write($"Enter col (0-{MaxCol}): ");
+                                    if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > MaxCol)
                                     {
-                                        ConsoleRenderer.ShowError("🚫 Invalid column. Please enter 0, 1, or 2.");
+                                        ConsoleRenderer.ShowError($"🚫 Invalid column. Please enter 0 to {MaxCol}.");
                                         break;
                                     }
 
@@ -114,7 +118,6 @@ namespace IFN584_ASS2.Core
             AnnounceResult();
         }
 
-        // 🔓 Expose players and game state for serialization
         public Player Player1
         {
             get => CurrentPlayer;
@@ -134,31 +137,25 @@ namespace IFN584_ASS2.Core
         }
 
         protected abstract void Initialize();
-        protected abstract void DisplayBoard();
+
+        protected abstract void DisplayBoard(); // keep this protected
+        public void ShowBoard() => DisplayBoard(); // ✅ public wrapper for Program.cs
+
         protected abstract void MakeMove(int input);
         protected abstract bool IsGameOver();
         protected abstract void AnnounceResult();
 
-        protected virtual bool IsComputerTurn()
-        {
-            return false;
-        }
-
-        protected virtual bool IsMoveNumberValid(int input)
-        {
-            return true;
-        }
+        protected virtual bool IsComputerTurn() => false;
+        protected virtual bool IsMoveNumberValid(int input) => true;
 
         protected virtual void MakeMoveWithCoords(int input, int row, int col)
         {
             throw new NotImplementedException("MakeMoveWithCoords must be overridden in derived classes.");
         }
 
-        protected virtual void MakeComputerMove()
-        {
-        }
+        protected virtual void MakeComputerMove() { }
 
-        private void SwitchPlayers()
+        protected void SwitchPlayers()
         {
             (CurrentPlayer, OtherPlayer) = (OtherPlayer, CurrentPlayer);
         }

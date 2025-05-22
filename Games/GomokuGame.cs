@@ -10,29 +10,42 @@ namespace IFN584_ASS2.Games
     {
         public char[][] Board { get; set; } = new char[15][];
         private const int Size = 15;
-        private GameMode gameMode;
+
+        public GameMode GameMode { get; set; } = GameMode.HumanVsHuman;
 
         private char CurrentSymbol => CurrentPlayer.IsOddPlayer ? 'X' : 'O';
 
         public GomokuGame(GameMode mode = GameMode.HumanVsHuman)
         {
-            gameMode = mode;
+            GameMode = mode;
+            if (GameMode == GameMode.HumanVsComputer)
+            {
+                Player2.IsHuman = false;
+                ComputerPlayer = Player2;
+            }
         }
+
+        public GomokuGame() : this(GameMode.HumanVsHuman) { }
 
         protected override void Initialize()
         {
-            for (int i = 0; i < Size; i++)
+            // Only reinitialize if the board wasn't restored from file
+            if (Board == null || Board.Length != Size || Board[0] == null || Board[0].Length != Size || Board[0][0] == '\0')
             {
-                Board[i] = new char[Size];
-                for (int j = 0; j < Size; j++)
-                    Board[i][j] = '.';
+                for (int i = 0; i < Size; i++)
+                {
+                    Board[i] = new char[Size];
+                    for (int j = 0; j < Size; j++)
+                        Board[i][j] = '.';
+                }
             }
 
-            if (gameMode == GameMode.HumanVsComputer)
-                OtherPlayer.IsHuman = false;
+            if (Player2 != null && !Player2.IsHuman)
+                ComputerPlayer = Player2;
 
             ConsoleRenderer.RenderMessage("🔳 Gomoku (Five in a Row). Get 5 of your symbol in a row.");
         }
+
 
         protected override void DisplayBoard()
         {
@@ -40,15 +53,6 @@ namespace IFN584_ASS2.Games
         }
 
         protected override bool IsMoveNumberValid(int input) => true;
-
-        protected override void MakeMoveWithCoords(int _, int row, int col)
-        {
-            if (Board[row][col] != '.')
-                throw new Exception("🚫 That spot is already taken.");
-
-            Board[row][col] = CurrentSymbol;
-            GameState.RecordMove(new Move(row, col, CurrentSymbol));
-        }
 
         protected override void MakeMove(int _)
         {
@@ -76,28 +80,53 @@ namespace IFN584_ASS2.Games
             GameState.RecordMove(new Move(row, col, CurrentSymbol));
         }
 
+        protected override void MakeMoveWithCoords(int _, int row, int col)
+        {
+            if (Board[row][col] != '.')
+                throw new Exception("🚫 That spot is already taken.");
+
+            Board[row][col] = CurrentSymbol;
+            GameState.RecordMove(new Move(row, col, CurrentSymbol));
+        }
+
         protected override bool IsComputerTurn()
         {
-            return gameMode == GameMode.HumanVsComputer && CurrentPlayer == ComputerPlayer;
+            return GameMode == GameMode.HumanVsComputer && CurrentPlayer == ComputerPlayer;
         }
 
         protected override void MakeComputerMove()
         {
-            var move = MoveSelector.FirstEmptyCell(Board, '.');
-            if (move == null)
+            // 1. Try to win
+            var winMove = FindWinningMove(CurrentSymbol);
+            if (winMove != null)
             {
-                Console.WriteLine("❌ No available moves.");
+                Console.WriteLine($"🤖 Computer placed {CurrentSymbol} at ({winMove.Value.row}, {winMove.Value.col}) — Winning move!");
+                Board[winMove.Value.row][winMove.Value.col] = CurrentSymbol;
+                GameState.RecordMove(new Move(winMove.Value.row, winMove.Value.col, CurrentSymbol));
                 return;
             }
 
-            int row = move.Value.row;
-            int col = move.Value.col;
-            char symbol = CurrentSymbol;
+            // 2. Otherwise, pick a random empty cell
+            var emptyCells = new List<(int row, int col)>();
+            for (int r = 0; r < Board.Length; r++)
+                for (int c = 0; c < Board[r].Length; c++)
+                    if (Board[r][c] == '.')
+                        emptyCells.Add((r, c));
 
-            Console.WriteLine($"🤖 Computer placed {symbol} at ({row}, {col})");
-            Board[row][col] = symbol;
-            GameState.RecordMove(new Move(row, col, symbol));
+            if (emptyCells.Count > 0)
+            {
+                var rand = new Random();
+                var move = emptyCells[rand.Next(emptyCells.Count)];
+                Console.WriteLine($"🤖 Computer placed {CurrentSymbol} at ({move.row}, {move.col})");
+                Board[move.row][move.col] = CurrentSymbol;
+                GameState.RecordMove(new Move(move.row, move.col, CurrentSymbol));
+            }
+            else
+            {
+                Console.WriteLine("❌ No available moves.");
+            }
         }
+
 
         protected override bool IsGameOver()
         {
@@ -151,18 +180,144 @@ namespace IFN584_ASS2.Games
         {
             var move = GameState.Undo();
             if (move != null)
+            {
                 Board[move.Row][move.Col] = '.';
+                LastCommandWasUtility = true;
+                ConsoleRenderer.ShowMessage("↩️ Undo successful.", ConsoleColor.Cyan);
+            }
             else
-                ConsoleRenderer.ShowError("No moves to undo.");
+            {
+                ConsoleRenderer.ShowMessage("ℹ️ No moves to undo.", ConsoleColor.Yellow);
+            }
         }
 
         protected override void Redo()
         {
             var move = GameState.Redo();
             if (move != null)
+            {
                 Board[move.Row][move.Col] = (char)move.Value;
+                LastCommandWasUtility = false;
+                ConsoleRenderer.ShowMessage("↪️ Redo successful.", ConsoleColor.Cyan);
+            }
             else
-                ConsoleRenderer.ShowError("No moves to redo.");
+            {
+                ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
+            }
         }
+        private (int row, int col)? FindWinningMove(char symbol)
+        {
+            for (int r = 0; r < Board.Length; r++)
+            {
+                for (int c = 0; c < Board[r].Length; c++)
+                {
+                    if (Board[r][c] != '.') continue;
+
+                    // Try placing symbol temporarily
+                    Board[r][c] = symbol;
+
+                    bool wins = CheckDirection(r, c, 1, 0, symbol) ||
+                                CheckDirection(r, c, 0, 1, symbol) ||
+                                CheckDirection(r, c, 1, 1, symbol) ||
+                                CheckDirection(r, c, 1, -1, symbol);
+
+                    Board[r][c] = '.'; // undo test move
+
+                    if (wins)
+                        return (r, c);
+                }
+            }
+
+            return null; // no winning move found
+        }
+
+
+        // ✅ Enables dynamic row/col range in GameTemplate
+        protected override int MaxRow => 14;
+        protected override int MaxCol => 14;
+        public override void Play()
+        {
+            Initialize();
+
+            while (!IsGameOver())
+            {
+                DisplayBoard();
+
+                if (IsComputerTurn())
+                {
+                    MakeComputerMove();
+                    if (!IsGameOver())
+                        SwitchPlayers();
+                    continue;
+                }
+
+                bool validInput = false;
+                while (!validInput)
+                {
+                    ConsoleRenderer.PromptPlayer(CurrentPlayer.Name);
+                    string? command = Console.ReadLine()?.Trim().ToLower();
+
+                    switch (command)
+                    {
+                        case "undo":
+                            Undo();
+                            LastCommandWasUtility = true;
+                            validInput = true;
+                            break;
+                        case "redo":
+                            Redo();
+                            LastCommandWasUtility = true;
+                            validInput = true;
+                            break;
+                        case "save":
+                            SaveGame();
+                            LastCommandWasUtility = true;
+                            validInput = true;
+                            break;
+                        case "help":
+                            ShowHelp();
+                            break;
+                        default:
+                            Console.Write($"Enter row (0-{MaxRow}): ");
+                            if (!int.TryParse(command, out int row) || row < 0 || row > MaxRow)
+                            {
+                                ConsoleRenderer.ShowError($"🚫 Invalid row. Please enter 0 to {MaxRow}.");
+                                continue;
+                            }
+
+                            Console.Write($"Enter col (0-{MaxCol}): ");
+                            if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > MaxCol)
+                            {
+                                ConsoleRenderer.ShowError($"🚫 Invalid column. Please enter 0 to {MaxCol}.");
+                                continue;
+                            }
+
+                            try
+                            {
+                                MakeMoveWithCoords(0, row, col);
+                                validInput = true;
+                            }
+                            catch (Exception ex)
+                            {
+                                ConsoleRenderer.ShowError($"Error: {ex.Message}");
+                            }
+                            break;
+                    }
+                }
+
+                if (!IsGameOver())
+                {
+                    if (LastCommandWasUtility)
+                        LastCommandWasUtility = false;
+                    else
+                        SwitchPlayers();
+                }
+            }
+
+            DisplayBoard();
+            AnnounceResult();
+        }
+
+
     }
 }
