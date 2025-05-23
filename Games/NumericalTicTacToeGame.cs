@@ -31,6 +31,7 @@ namespace IFN584_ASS2.Games
                     for (int j = 0; j < BoardSize; j++)
                         board[i, j] = BoardData[i][j];
 
+                // Restore the game state with move history
                 if (SavedGameState != null)
                 {
                     GameState = SavedGameState;
@@ -99,6 +100,7 @@ namespace IFN584_ASS2.Games
                 if (checkLine(i, true) || checkLine(i, false))
                     return true;
 
+            // Check main diagonal
             int sumMain = 0;
             bool mainDiagonalComplete = true;
             for (int i = 0; i < BoardSize; i++)
@@ -112,6 +114,7 @@ namespace IFN584_ASS2.Games
             }
             if (mainDiagonalComplete && sumMain == TargetSum) return true;
 
+            // Check anti-diagonal
             int sumAnti = 0;
             bool antiDiagonalComplete = true;
             for (int i = 0; i < BoardSize; i++)
@@ -144,6 +147,7 @@ namespace IFN584_ASS2.Games
                                        .ToArray())
                 .ToArray();
 
+            // Save the current game state with move history
             SavedGameState = GameState;
 
             FileManager.Save(this);
@@ -192,16 +196,16 @@ namespace IFN584_ASS2.Games
                             continue;
                         case "undo":
                             Undo();
-                            moved = false; 
+                            moved = false; // Undo handles its own player switching
                             continue;
                         case "redo":
                             Redo();
-                            moved = false; 
+                            moved = false; // Redo handles its own player switching
                             continue;
                         case "save":
                             SaveGame();
                             ConsoleRenderer.ShowMessage("Game saved successfully.", ConsoleColor.Green);
-                            moved = false; 
+                            moved = false; // Save doesn't count as a move, don't switch players
                             continue;
                         case "menu":
                         case "back":
@@ -242,7 +246,7 @@ namespace IFN584_ASS2.Games
 
         protected override bool IsComputerTurn() => CurrentPlayer.Name == "Computer";
 
- // Computer logic
+        // IMPROVED AI IMPLEMENTATION
         protected override void MakeComputerMove()
         {
             var validNumbers = Enumerable.Range(1, BoardSize * BoardSize)
@@ -263,18 +267,22 @@ namespace IFN584_ASS2.Games
 
         private (int number, int row, int col)? GetBestMove(List<int> validNumbers)
         {
+            // First, try to win immediately
             var winningMove = FindWinningMove(validNumbers);
             if (winningMove != null) return winningMove;
 
+            // Second, try to block opponent from winning
             var blockingMove = FindBlockingMove();
             if (blockingMove != null) return blockingMove;
 
+            // For small boards or early game, use strategic heuristics
             if (BoardSize <= 4 || UsedNumbers.Count < BoardSize * 2)
             {
                 var strategicMove = FindStrategicMove(validNumbers);
                 if (strategicMove != null) return strategicMove;
             }
 
+            // Use minimax for deeper analysis
             return FindBestMoveWithMinimax(validNumbers, depth: Math.Min(6, validNumbers.Count));
         }
 
@@ -307,6 +315,7 @@ namespace IFN584_ASS2.Games
 
         private (int number, int row, int col)? FindBlockingMove()
         {
+            // Get opponent's valid numbers
             var opponentNumbers = Enumerable.Range(1, BoardSize * BoardSize)
                                      .Where(n => n % 2 == (CurrentPlayer.IsOddPlayer ? 0 : 1)
                                               && !UsedNumbers.Contains(n))
@@ -330,11 +339,13 @@ namespace IFN584_ASS2.Games
 
                             if (opponentWins)
                             {
+                                // Try to block with our numbers
                                 var myNumbers = Enumerable.Range(1, BoardSize * BoardSize)
                                                    .Where(n => n % 2 == (CurrentPlayer.IsOddPlayer ? 1 : 0)
                                                             && !UsedNumbers.Contains(n))
                                                    .ToList();
 
+                                // Find a number that can block this position
                                 foreach (var myNum in myNumbers)
                                 {
                                     return (myNum, r, c);
@@ -351,6 +362,7 @@ namespace IFN584_ASS2.Games
         {
             var rnd = new Random();
 
+            // Strategy 1: Prioritize center positions for odd-sized boards
             if (BoardSize % 2 == 1)
             {
                 int center = BoardSize / 2;
@@ -361,6 +373,7 @@ namespace IFN584_ASS2.Games
                 }
             }
 
+            // Strategy 2: Prioritize corners and edges
             var priorityPositions = GetPriorityPositions().Where(pos => board[pos.row, pos.col] == 0).ToList();
 
             if (priorityPositions.Any())
@@ -370,6 +383,7 @@ namespace IFN584_ASS2.Games
                 return (bestNum, pos.row, pos.col);
             }
 
+            // Strategy 3: Random valid move
             var emptyCells = GetEmptyCells();
             if (emptyCells.Any())
             {
@@ -385,11 +399,13 @@ namespace IFN584_ASS2.Games
         {
             var positions = new List<(int row, int col)>();
 
+            // Add corners
             positions.Add((0, 0));
             positions.Add((0, BoardSize - 1));
             positions.Add((BoardSize - 1, 0));
             positions.Add((BoardSize - 1, BoardSize - 1));
 
+            // Add edges
             for (int i = 1; i < BoardSize - 1; i++)
             {
                 positions.Add((0, i));
@@ -403,6 +419,7 @@ namespace IFN584_ASS2.Games
 
         private int GetBestNumberForPosition(int row, int col, List<int> validNumbers)
         {
+            // Try to find a number that maximizes potential winning lines
             var bestScore = -1;
             var bestNumber = validNumbers[0];
 
@@ -423,14 +440,16 @@ namespace IFN584_ASS2.Games
         {
             int score = 0;
 
-            score += EvaluateLineContribution(number, row, col, true);  
-            score += EvaluateLineContribution(number, row, col, false); 
+            // Check how this number contributes to potential winning lines
+            score += EvaluateLineContribution(number, row, col, true);  // Row
+            score += EvaluateLineContribution(number, row, col, false); // Column
 
+            // Check diagonals
             if (row == col)
-                score += EvaluateLineContribution(number, row, col, true, true); 
+                score += EvaluateLineContribution(number, row, col, true, true); // Main diagonal
 
             if (row + col == BoardSize - 1)
-                score += EvaluateLineContribution(number, row, col, false, true); 
+                score += EvaluateLineContribution(number, row, col, false, true); // Anti-diagonal
 
             return score;
         }
@@ -458,10 +477,12 @@ namespace IFN584_ASS2.Games
                     currentSum += value;
             }
 
+            // If adding this number could lead to target sum, give high score
             int remainingSum = TargetSum - currentSum - number;
             if (emptyCount == 1 && remainingSum == 0)
-                return 100; 
+                return 100; // This would be a winning move
 
+            // Give points based on how close we are to target
             return Math.Max(0, 10 - Math.Abs(remainingSum));
         }
 
@@ -570,15 +591,16 @@ namespace IFN584_ASS2.Games
 
             int score = 0;
 
+            // Evaluate all lines for potential
             for (int i = 0; i < BoardSize; i++)
             {
-                score += EvaluateLine(i, true);  
-                score += EvaluateLine(i, false); 
+                score += EvaluateLine(i, true);  // Rows
+                score += EvaluateLine(i, false); // Columns
             }
 
             // Evaluate diagonals
-            score += EvaluateDiagonal(true); 
-            score += EvaluateDiagonal(false); 
+            score += EvaluateDiagonal(true);  // Main diagonal
+            score += EvaluateDiagonal(false); // Anti-diagonal
 
             return score;
         }
@@ -640,20 +662,24 @@ namespace IFN584_ASS2.Games
                 return sum == TargetSum ? 1000 : 0;
             }
 
+            // If line has both odd and even numbers, it might be contested
             if (oddCount > 0 && evenCount > 0)
                 return 0;
 
             int remainingSum = TargetSum - sum;
 
-            if (oddCount > 0) 
+            // Check if it's possible to complete this line
+            if (oddCount > 0) // Line has odd numbers
             {
+                // Need more odd numbers to complete
                 var availableOdds = Enumerable.Range(1, BoardSize * BoardSize)
                                        .Where(n => n % 2 == 1 && !UsedNumbers.Contains(n));
                 if (CanCompleteWithNumbers(availableOdds, remainingSum, emptyCount))
                     return CurrentPlayer.IsOddPlayer ? 50 : -50;
             }
-            else if (evenCount > 0) 
+            else if (evenCount > 0) // Line has even numbers
             {
+                // Need more even numbers to complete
                 var availableEvens = Enumerable.Range(1, BoardSize * BoardSize)
                                         .Where(n => n % 2 == 0 && !UsedNumbers.Contains(n));
                 if (CanCompleteWithNumbers(availableEvens, remainingSum, emptyCount))
@@ -668,6 +694,7 @@ namespace IFN584_ASS2.Games
             var numbers = availableNumbers.ToList();
             if (numbers.Count < slotsNeeded) return false;
 
+            // Simple check: can we make the target sum with available numbers?
             var combinations = GetCombinations(numbers, slotsNeeded);
             return combinations.Any(combo => combo.Sum() == targetSum);
         }
@@ -698,12 +725,14 @@ namespace IFN584_ASS2.Games
 
         private bool CheckWinCondition()
         {
+            // Check rows and columns
             for (int i = 0; i < BoardSize; i++)
             {
                 if (CheckLine(i, true) || CheckLine(i, false))
                     return true;
             }
 
+            // Check diagonals
             return CheckDiagonal(true) || CheckDiagonal(false);
         }
 
