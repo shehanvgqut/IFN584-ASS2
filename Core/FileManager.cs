@@ -30,14 +30,14 @@ namespace IFN584_ASS2.Core
             });
 
             File.WriteAllText(SaveFilePath, json);
-            Console.WriteLine("💾 Game saved successfully.");
+            Console.WriteLine("\ud83d\udcc2 Game saved successfully.");
         }
 
         public static GameTemplate? Load()
         {
             if (!File.Exists(SaveFilePath))
             {
-                Console.WriteLine("⚠️ No save file found.");
+                Console.WriteLine("\u26a0\ufe0f No save file found.");
                 return null;
             }
 
@@ -53,19 +53,27 @@ namespace IFN584_ASS2.Core
 
             if (wrapper == null || string.IsNullOrEmpty(wrapper.GameType))
             {
-                Console.WriteLine("⚠️ Failed to load saved game metadata.");
+                Console.WriteLine("\u26a0\ufe0f Failed to load saved game metadata.");
                 return null;
             }
 
-            return wrapper.GameType switch
+            GameTemplate? game = wrapper.GameType switch
             {
                 nameof(NumericalTicTacToeGame) => JsonSerializer.Deserialize<NumericalTicTacToeGame>(wrapper.GameData.GetRawText(), options),
                 nameof(NotaktoGame) => JsonSerializer.Deserialize<NotaktoGame>(wrapper.GameData.GetRawText(), options),
                 nameof(GomokuGame) => JsonSerializer.Deserialize<GomokuGame>(wrapper.GameData.GetRawText(), options),
                 _ => null
             };
-        }
 
+            // \ud83e\uddd0 Auto-fix for ComputerPlayer if needed
+            if (game != null && game.Player2 != null && game.Player2.Name == "Computer")
+            {
+                game.Player2.IsHuman = false;
+                game.ComputerPlayer = game.Player2;
+            }
+
+            return game;
+        }
 
         private class SaveWrapper
         {

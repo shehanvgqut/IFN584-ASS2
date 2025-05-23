@@ -11,9 +11,9 @@ namespace IFN584_ASS2.Core
         protected GameState GameState = new();
         protected bool LastCommandWasUtility = false;
 
-        public Player ComputerPlayer { get; protected set; }
+        public Player ComputerPlayer { get; set; }
 
-        // 👇 Default limits for 3×3 games
+        // Default limits for 3×3 games
         protected virtual int MaxRow => 2;
         protected virtual int MaxCol => 2;
 
@@ -47,19 +47,23 @@ namespace IFN584_ASS2.Core
                             LastCommandWasUtility = true;
                             validInput = true;
                             break;
+
                         case "redo":
                             Redo();
                             LastCommandWasUtility = true;
                             validInput = true;
                             break;
+
                         case "help":
                             ShowHelp();
                             break;
+
                         case "save":
                             SaveGame();
                             LastCommandWasUtility = true;
                             validInput = true;
                             break;
+
                         default:
                             if (int.TryParse(input, out int num))
                             {
@@ -71,14 +75,14 @@ namespace IFN584_ASS2.Core
                                         break;
                                     }
 
-                                    Console.Write($"Enter row (0-{MaxRow}): ");
+                                    Console.Write($"Enter row (0–{MaxRow}): ");
                                     if (!int.TryParse(Console.ReadLine(), out int row) || row < 0 || row > MaxRow)
                                     {
                                         ConsoleRenderer.ShowError($"🚫 Invalid row. Please enter 0 to {MaxRow}.");
                                         break;
                                     }
 
-                                    Console.Write($"Enter col (0-{MaxCol}): ");
+                                    Console.Write($"Enter col (0–{MaxCol}): ");
                                     if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > MaxCol)
                                     {
                                         ConsoleRenderer.ShowError($"🚫 Invalid column. Please enter 0 to {MaxCol}.");
@@ -90,7 +94,7 @@ namespace IFN584_ASS2.Core
                                 }
                                 catch (Exception ex)
                                 {
-                                    ConsoleRenderer.ShowError($"Error: {ex.Message}");
+                                    ConsoleRenderer.ShowError($"❌ Error: {ex.Message}");
                                 }
                             }
                             else
@@ -103,14 +107,9 @@ namespace IFN584_ASS2.Core
 
                 if (!IsGameOver())
                 {
-                    if (LastCommandWasUtility)
-                    {
-                        LastCommandWasUtility = false;
-                    }
-                    else
-                    {
+                    if (!LastCommandWasUtility)
                         SwitchPlayers();
-                    }
+                    LastCommandWasUtility = false;
                 }
             }
 
@@ -137,9 +136,8 @@ namespace IFN584_ASS2.Core
         }
 
         protected abstract void Initialize();
-
-        protected abstract void DisplayBoard(); // keep this protected
-        public void ShowBoard() => DisplayBoard(); // ✅ public wrapper for Program.cs
+        protected abstract void DisplayBoard();
+        public void ShowBoard() => DisplayBoard(); // Optional public wrapper
 
         protected abstract void MakeMove(int input);
         protected abstract bool IsGameOver();
@@ -176,26 +174,18 @@ namespace IFN584_ASS2.Core
         {
             var move = GameState.Undo();
             if (move == null)
-            {
                 ConsoleRenderer.ShowMessage("ℹ️ No moves to undo.", ConsoleColor.Yellow);
-            }
             else
-            {
                 ConsoleRenderer.ShowMessage($"↩️ Undo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
-            }
         }
 
         protected virtual void Redo()
         {
             var move = GameState.Redo();
             if (move == null)
-            {
                 ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
-            }
             else
-            {
                 ConsoleRenderer.ShowMessage($"↪️ Redo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
-            }
         }
 
         #endregion

@@ -11,21 +11,32 @@ namespace IFN584_ASS2
         static void Main()
         {
             Console.WriteLine("🎮 Welcome to the Multi-Board Game Framework!");
-            Console.Write("Do you want to load a saved game? (y/n): ");
-            var loadInput = Console.ReadLine()?.Trim().ToLower();
+
+            string? loadInput;
+            while (true)
+            {
+                Console.Write("Do you want to load a saved game? (y/n): ");
+                loadInput = Console.ReadLine()?.Trim().ToLower();
+
+                if (loadInput == "y" || loadInput == "n")
+                    break;
+
+                Console.WriteLine("❌ Invalid input. Please enter 'y' or 'n'.");
+            }
 
             if (loadInput == "y")
             {
                 var loadedGame = FileManager.Load();
                 if (loadedGame != null)
                 {
-                    //loadedGame.ShowBoard();  // ✅ call public wrapper method
+                    if (loadedGame is NumericalTicTacToeGame nt)
+                        nt.MarkAsLoaded();
                     loadedGame.Play();
                     return;
                 }
-
                 Console.WriteLine("⚠️ No valid saved game found. Starting a new game.");
             }
+
 
             GameTemplate game = null;
 
@@ -41,7 +52,15 @@ namespace IFN584_ASS2
                 if (choice == "1")
                 {
                     GameMode selectedMode = PromptForMode("Numerical Tic-Tac-Toe");
-                    game = new NumericalTicTacToeGame(selectedMode);
+                    var numGame = new NumericalTicTacToeGame();
+
+                    // Set player configuration
+                    numGame.Player1 = new Player("Player 1", true);
+                    numGame.Player2 = selectedMode == GameMode.HumanVsComputer
+                        ? new Player("Computer", false)
+                        : new Player("Player 2", false);
+
+                    game = numGame;
                     break;
                 }
                 else if (choice == "2")
