@@ -31,7 +31,6 @@ namespace IFN584_ASS2.Games
                     for (int j = 0; j < BoardSize; j++)
                         board[i, j] = BoardData[i][j];
 
-                // Restore the game state with move history
                 if (SavedGameState != null)
                 {
                     GameState = SavedGameState;
@@ -100,7 +99,6 @@ namespace IFN584_ASS2.Games
                 if (checkLine(i, true) || checkLine(i, false))
                     return true;
 
-            // Check main diagonal
             int sumMain = 0;
             bool mainDiagonalComplete = true;
             for (int i = 0; i < BoardSize; i++)
@@ -114,7 +112,6 @@ namespace IFN584_ASS2.Games
             }
             if (mainDiagonalComplete && sumMain == TargetSum) return true;
 
-            // Check anti-diagonal
             int sumAnti = 0;
             bool antiDiagonalComplete = true;
             for (int i = 0; i < BoardSize; i++)
@@ -147,7 +144,6 @@ namespace IFN584_ASS2.Games
                                        .ToArray())
                 .ToArray();
 
-            // Save the current game state with move history
             SavedGameState = GameState;
 
             FileManager.Save(this);
@@ -196,16 +192,16 @@ namespace IFN584_ASS2.Games
                             continue;
                         case "undo":
                             Undo();
-                            moved = false; // Undo handles its own player switching
+                            moved = false; 
                             continue;
                         case "redo":
                             Redo();
-                            moved = false; // Redo handles its own player switching
+                            moved = false; 
                             continue;
                         case "save":
                             SaveGame();
                             ConsoleRenderer.ShowMessage("Game saved successfully.", ConsoleColor.Green);
-                            moved = false; // Save doesn't count as a move, don't switch players
+                            moved = false; 
                             continue;
                         case "menu":
                         case "back":
@@ -246,7 +242,7 @@ namespace IFN584_ASS2.Games
 
         protected override bool IsComputerTurn() => CurrentPlayer.Name == "Computer";
 
-        // IMPROVED AI IMPLEMENTATION
+        // Com logic
         protected override void MakeComputerMove()
         {
             var validNumbers = Enumerable.Range(1, BoardSize * BoardSize)
@@ -267,22 +263,18 @@ namespace IFN584_ASS2.Games
 
         private (int number, int row, int col)? GetBestMove(List<int> validNumbers)
         {
-            // First, try to win immediately
             var winningMove = FindWinningMove(validNumbers);
             if (winningMove != null) return winningMove;
 
-            // Second, try to block opponent from winning
             var blockingMove = FindBlockingMove();
             if (blockingMove != null) return blockingMove;
 
-            // For small boards or early game, use strategic heuristics
             if (BoardSize <= 4 || UsedNumbers.Count < BoardSize * 2)
             {
                 var strategicMove = FindStrategicMove(validNumbers);
                 if (strategicMove != null) return strategicMove;
             }
 
-            // Use minimax for deeper analysis
             return FindBestMoveWithMinimax(validNumbers, depth: Math.Min(6, validNumbers.Count));
         }
 
@@ -315,7 +307,6 @@ namespace IFN584_ASS2.Games
 
         private (int number, int row, int col)? FindBlockingMove()
         {
-            // Get opponent's valid numbers
             var opponentNumbers = Enumerable.Range(1, BoardSize * BoardSize)
                                      .Where(n => n % 2 == (CurrentPlayer.IsOddPlayer ? 0 : 1)
                                               && !UsedNumbers.Contains(n))
@@ -339,13 +330,11 @@ namespace IFN584_ASS2.Games
 
                             if (opponentWins)
                             {
-                                // Try to block with our numbers
                                 var myNumbers = Enumerable.Range(1, BoardSize * BoardSize)
                                                    .Where(n => n % 2 == (CurrentPlayer.IsOddPlayer ? 1 : 0)
                                                             && !UsedNumbers.Contains(n))
                                                    .ToList();
 
-                                // Find a number that can block this position
                                 foreach (var myNum in myNumbers)
                                 {
                                     return (myNum, r, c);
