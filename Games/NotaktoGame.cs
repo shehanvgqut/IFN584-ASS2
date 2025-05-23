@@ -15,7 +15,6 @@ namespace IFN584_ASS2.Games
         public NotaktoGame(GameMode mode = GameMode.HumanVsHuman)
         {
             GameMode = mode;
-
             if (GameMode == GameMode.HumanVsComputer)
             {
                 Player2.IsHuman = false;
@@ -27,7 +26,6 @@ namespace IFN584_ASS2.Games
 
         protected override void Initialize()
         {
-            // Only create fresh boards if Boards is empty (new game)
             if (Boards == null || Boards.Count != 3)
             {
                 Boards = new List<char[][]>();
@@ -43,11 +41,10 @@ namespace IFN584_ASS2.Games
                 }
             }
 
-            // Restore computer player after deserialization
             if (Player2 != null && !Player2.IsHuman)
                 ComputerPlayer = Player2;
 
-            ConsoleRenderer.RenderMessage("🧩 Notakto (3-board X-only Tic-Tac-Toe). Last to complete a line loses.");
+            ConsoleRenderer.RenderMessage("Notakto (3-board X-only Tic-Tac-Toe). Last to complete a line loses.");
         }
 
         protected override void DisplayBoard()
@@ -60,17 +57,14 @@ namespace IFN584_ASS2.Games
             }
         }
 
-        protected override bool IsMoveNumberValid(int input)
-        {
-            return true; // input is ignored
-        }
+        protected override bool IsMoveNumberValid(int input) => true;
 
         protected override void MakeMove(int _)
         {
             Console.Write("Choose board (1-3): ");
             if (!int.TryParse(Console.ReadLine(), out int boardIdx) || boardIdx < 1 || boardIdx > 3)
             {
-                ConsoleRenderer.ShowError("🚫 Invalid board number. Must be 1, 2, or 3.");
+                ConsoleRenderer.ShowError("Invalid board number. Must be 1, 2, or 3.");
                 return;
             }
 
@@ -79,20 +73,20 @@ namespace IFN584_ASS2.Games
             Console.Write("Enter row (0-2): ");
             if (!int.TryParse(Console.ReadLine(), out int row) || row < 0 || row > 2)
             {
-                ConsoleRenderer.ShowError("🚫 Invalid row.");
+                ConsoleRenderer.ShowError("Invalid row.");
                 return;
             }
 
             Console.Write("Enter col (0-2): ");
             if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > 2)
             {
-                ConsoleRenderer.ShowError("🚫 Invalid column.");
+                ConsoleRenderer.ShowError("Invalid column.");
                 return;
             }
 
             if (Boards[boardIdx][row][col] != ' ')
             {
-                ConsoleRenderer.ShowError("🚫 That spot is already taken.");
+                ConsoleRenderer.ShowError("That spot is already taken.");
                 return;
             }
 
@@ -103,19 +97,17 @@ namespace IFN584_ASS2.Games
         protected override void MakeMoveWithCoords(int boardIndex, int row, int col)
         {
             if (boardIndex < 0 || boardIndex >= Boards.Count)
-                throw new Exception("🚫 Invalid board index.");
+                throw new Exception("Invalid board index.");
 
             if (Boards[boardIndex][row][col] != ' ')
-                throw new Exception("🚫 That spot is already taken.");
+                throw new Exception("That spot is already taken.");
 
             Boards[boardIndex][row][col] = 'X';
             GameState.RecordMove(new Move(row, col, boardIndex));
         }
 
-        protected override bool IsComputerTurn()
-        {
-            return GameMode == GameMode.HumanVsComputer && CurrentPlayer == ComputerPlayer;
-        }
+        protected override bool IsComputerTurn() =>
+            GameMode == GameMode.HumanVsComputer && CurrentPlayer == ComputerPlayer;
 
         protected override void MakeComputerMove()
         {
@@ -126,14 +118,14 @@ namespace IFN584_ASS2.Games
                 var move = MoveSelector.FirstEmptyCell(Boards[b], ' ');
                 if (move != null)
                 {
-                    Console.WriteLine($"🤖 Computer played at Board {b + 1}, ({move.Value.row}, {move.Value.col})");
+                    Console.WriteLine($"Computer played at Board {b + 1}, ({move.Value.row}, {move.Value.col})");
                     Boards[b][move.Value.row][move.Value.col] = 'X';
                     GameState.RecordMove(new Move(move.Value.row, move.Value.col, b));
                     return;
                 }
             }
 
-            Console.WriteLine("❌ No available moves for computer.");
+            Console.WriteLine("No available moves for computer.");
         }
 
         protected override bool IsGameOver()
@@ -144,7 +136,6 @@ namespace IFN584_ASS2.Games
                 if (!HasThreeInARow(board))
                     activeBoards++;
             }
-
             return activeBoards == 0;
         }
 
@@ -162,7 +153,7 @@ namespace IFN584_ASS2.Games
 
         protected override void AnnounceResult()
         {
-            ConsoleRenderer.RenderMessage($"🪦 {CurrentPlayer.Name} made the last move. They lose.", ConsoleColor.Red);
+            ConsoleRenderer.RenderMessage($"{CurrentPlayer.Name} made the last move. They lose.", ConsoleColor.Red);
         }
 
         protected override void SaveGame()
@@ -177,11 +168,11 @@ namespace IFN584_ASS2.Games
             {
                 Boards[move.Value][move.Row][move.Col] = ' ';
                 LastCommandWasUtility = true;
-                ConsoleRenderer.ShowMessage("↩️ Undo successful. It's still your turn.", ConsoleColor.Cyan);
+                ConsoleRenderer.ShowMessage("Undo successful. It's still your turn.", ConsoleColor.Cyan);
             }
             else
             {
-                ConsoleRenderer.ShowMessage("ℹ️ No moves to undo.", ConsoleColor.Yellow);
+                ConsoleRenderer.ShowMessage("No moves to undo.", ConsoleColor.Yellow);
             }
         }
 
@@ -192,12 +183,103 @@ namespace IFN584_ASS2.Games
             {
                 Boards[move.Value][move.Row][move.Col] = 'X';
                 LastCommandWasUtility = false;
-                ConsoleRenderer.ShowMessage("↪️ Redo successful. It's still your turn.", ConsoleColor.Cyan);
+                ConsoleRenderer.ShowMessage("Redo successful. It's still your turn.", ConsoleColor.Cyan);
             }
             else
             {
-                ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
+                ConsoleRenderer.ShowMessage("No moves to redo.", ConsoleColor.Yellow);
             }
+        }
+
+        public override bool Play()
+        {
+            Initialize();
+
+            while (!IsGameOver())
+            {
+                DisplayBoard();
+
+                if (IsComputerTurn())
+                {
+                    MakeComputerMove();
+                    if (!IsGameOver()) SwitchPlayers();
+                    continue;
+                }
+
+                bool valid = false;
+                while (!valid)
+                {
+                    Console.Write($"{CurrentPlayer.Name}, enter your move or command (undo, redo, save, help, menu): ");
+                    string? input = Console.ReadLine()?.Trim().ToLower();
+
+                    switch (input)
+                    {
+                        case "help":
+                            HelpProvider.ShowHelp("notakto");
+                            break;
+                        case "save":
+                            SaveGame();
+                            valid = true;
+                            break;
+                        case "undo":
+                            Undo();
+                            valid = true;
+                            break;
+                        case "redo":
+                            Redo();
+                            valid = true;
+                            break;
+                        case "menu":
+                        case "back":
+                        case "back to menu":
+                            ConsoleRenderer.ShowMessage("Returning to main menu...", ConsoleColor.Yellow);
+                            return false;
+                        default:
+                            Console.Write("Choose board (1-3): ");
+                            if (!int.TryParse(input, out int boardIndex) || boardIndex < 1 || boardIndex > 3)
+                            {
+                                ConsoleRenderer.ShowError("Invalid board.");
+                                continue;
+                            }
+
+                            Console.Write("Enter row (0-2): ");
+                            if (!int.TryParse(Console.ReadLine(), out int row) || row < 0 || row > 2)
+                            {
+                                ConsoleRenderer.ShowError("Invalid row.");
+                                continue;
+                            }
+
+                            Console.Write("Enter col (0-2): ");
+                            if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > 2)
+                            {
+                                ConsoleRenderer.ShowError("Invalid column.");
+                                continue;
+                            }
+
+                            try
+                            {
+                                MakeMoveWithCoords(boardIndex - 1, row, col);
+                                valid = true;
+                            }
+                            catch (Exception ex)
+                            {
+                                ConsoleRenderer.ShowError($"Error: {ex.Message}");
+                            }
+                            break;
+                    }
+                }
+
+                if (!IsGameOver())
+                {
+                    if (!LastCommandWasUtility)
+                        SwitchPlayers();
+                    LastCommandWasUtility = false;
+                }
+            }
+
+            DisplayBoard();
+            AnnounceResult();
+            return true;
         }
     }
 }

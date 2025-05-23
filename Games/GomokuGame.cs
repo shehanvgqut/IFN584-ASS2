@@ -30,7 +30,6 @@ namespace IFN584_ASS2.Games
 
         protected override void Initialize()
         {
-            // Avoid re-initializing if loaded from file
             if (Board[0] == null || Board[0][0] == '\0')
             {
                 for (int i = 0; i < Size; i++)
@@ -44,7 +43,7 @@ namespace IFN584_ASS2.Games
             if (Player2 != null && !Player2.IsHuman)
                 ComputerPlayer = Player2;
 
-            ConsoleRenderer.RenderMessage("🔳 Gomoku (Five in a Row). Get 5 of your symbol in a row.");
+            ConsoleRenderer.RenderMessage("Gomoku (Five in a Row). Get 5 of your symbol in a row.");
         }
 
         protected override void DisplayBoard()
@@ -59,14 +58,14 @@ namespace IFN584_ASS2.Games
             Console.Write("Enter row (1-15): ");
             if (!int.TryParse(Console.ReadLine(), out int row) || row < 1 || row > Size)
             {
-                ConsoleRenderer.ShowError("🚫 Invalid row. Must be between 1 and 15.");
+                ConsoleRenderer.ShowError("Invalid row. Must be between 1 and 15.");
                 return;
             }
 
             Console.Write("Enter col (1-15): ");
             if (!int.TryParse(Console.ReadLine(), out int col) || col < 1 || col > Size)
             {
-                ConsoleRenderer.ShowError("🚫 Invalid column. Must be between 1 and 15.");
+                ConsoleRenderer.ShowError("Invalid column. Must be between 1 and 15.");
                 return;
             }
 
@@ -74,7 +73,7 @@ namespace IFN584_ASS2.Games
 
             if (Board[row][col] != '.')
             {
-                ConsoleRenderer.ShowError("🚫 That spot is already taken.");
+                ConsoleRenderer.ShowError("That spot is already taken.");
                 return;
             }
 
@@ -84,18 +83,16 @@ namespace IFN584_ASS2.Games
 
         protected override void MakeMoveWithCoords(int _, int row, int col)
         {
-            row--; col--; // 1-based to 0-based
+            row--; col--;
             if (Board[row][col] != '.')
-                throw new Exception("🚫 That spot is already taken.");
+                throw new Exception("That spot is already taken.");
 
             Board[row][col] = CurrentSymbol;
             GameState.RecordMove(new Move(row, col, CurrentSymbol));
         }
 
-        protected override bool IsComputerTurn()
-        {
-            return GameMode == GameMode.HumanVsComputer && CurrentPlayer == ComputerPlayer;
-        }
+        protected override bool IsComputerTurn() =>
+            GameMode == GameMode.HumanVsComputer && CurrentPlayer == ComputerPlayer;
 
         protected override void MakeComputerMove()
         {
@@ -103,7 +100,7 @@ namespace IFN584_ASS2.Games
             if (winMove != null)
             {
                 var (r, c) = winMove.Value;
-                Console.WriteLine($"🤖 Computer placed {CurrentSymbol} at ({r + 1}, {c + 1}) — Winning move!");
+                Console.WriteLine($"Computer placed {CurrentSymbol} at ({r + 1}, {c + 1}) — Winning move!");
                 Board[r][c] = CurrentSymbol;
                 GameState.RecordMove(new Move(r, c, CurrentSymbol));
                 return;
@@ -119,13 +116,13 @@ namespace IFN584_ASS2.Games
             {
                 var rand = new Random();
                 var move = emptyCells[rand.Next(emptyCells.Count)];
-                Console.WriteLine($"🤖 Computer placed {CurrentSymbol} at ({move.row + 1}, {move.col + 1})");
+                Console.WriteLine($"Computer placed {CurrentSymbol} at ({move.row + 1}, {move.col + 1})");
                 Board[move.row][move.col] = CurrentSymbol;
                 GameState.RecordMove(new Move(move.row, move.col, CurrentSymbol));
             }
             else
             {
-                Console.WriteLine("❌ No available moves.");
+                Console.WriteLine("No available moves.");
             }
         }
 
@@ -186,7 +183,7 @@ namespace IFN584_ASS2.Games
 
         protected override void AnnounceResult()
         {
-            ConsoleRenderer.RenderMessage($"🏆 {CurrentPlayer.Name} wins with 5 in a row!", ConsoleColor.Green);
+            ConsoleRenderer.RenderMessage($"{CurrentPlayer.Name} wins with 5 in a row!", ConsoleColor.Green);
         }
 
         protected override void ShowHelp()
@@ -206,11 +203,11 @@ namespace IFN584_ASS2.Games
             {
                 Board[move.Row][move.Col] = '.';
                 LastCommandWasUtility = true;
-                ConsoleRenderer.ShowMessage("↩️ Undo successful.", ConsoleColor.Cyan);
+                ConsoleRenderer.ShowMessage("Undo successful.", ConsoleColor.Cyan);
             }
             else
             {
-                ConsoleRenderer.ShowMessage("ℹ️ No moves to undo.", ConsoleColor.Yellow);
+                ConsoleRenderer.ShowMessage("No moves to undo.", ConsoleColor.Yellow);
             }
         }
 
@@ -221,17 +218,18 @@ namespace IFN584_ASS2.Games
             {
                 Board[move.Row][move.Col] = (char)move.Value;
                 LastCommandWasUtility = false;
-                ConsoleRenderer.ShowMessage("↪️ Redo successful.", ConsoleColor.Cyan);
+                ConsoleRenderer.ShowMessage("Redo successful.", ConsoleColor.Cyan);
             }
             else
             {
-                ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
+                ConsoleRenderer.ShowMessage("No moves to redo.", ConsoleColor.Yellow);
             }
         }
 
         protected override int MaxRow => 15;
         protected override int MaxCol => 15;
-        public override void Play()
+
+        public override bool Play()
         {
             Initialize();
 
@@ -250,7 +248,7 @@ namespace IFN584_ASS2.Games
                 bool validInput = false;
                 while (!validInput)
                 {
-                    ConsoleRenderer.PromptPlayer(CurrentPlayer.Name);
+                    Console.Write($"{CurrentPlayer.Name}, enter your move or command (undo, redo, save, help, menu): ");
                     string? command = Console.ReadLine()?.Trim().ToLower();
 
                     switch (command)
@@ -273,24 +271,29 @@ namespace IFN584_ASS2.Games
                         case "help":
                             ShowHelp();
                             break;
+                        case "menu":
+                        case "back":
+                        case "back to menu":
+                            ConsoleRenderer.ShowMessage("Returning to main menu...", ConsoleColor.Yellow);
+                            return false;
                         default:
                             Console.Write("Enter row (1–15): ");
                             if (!int.TryParse(command, out int row) || row < 1 || row > 15)
                             {
-                                ConsoleRenderer.ShowError("🚫 Invalid row. Enter 1 to 15.");
+                                ConsoleRenderer.ShowError("Invalid row. Enter 1 to 15.");
                                 continue;
                             }
 
                             Console.Write("Enter col (1–15): ");
                             if (!int.TryParse(Console.ReadLine(), out int col) || col < 1 || col > 15)
                             {
-                                ConsoleRenderer.ShowError("🚫 Invalid column. Enter 1 to 15.");
+                                ConsoleRenderer.ShowError("Invalid column. Enter 1 to 15.");
                                 continue;
                             }
 
                             try
                             {
-                                MakeMoveWithCoords(0, row, col); // 0 is ignored
+                                MakeMoveWithCoords(0, row, col);
                                 validInput = true;
                             }
                             catch (Exception ex)
@@ -303,16 +306,15 @@ namespace IFN584_ASS2.Games
 
                 if (!IsGameOver())
                 {
-                    if (LastCommandWasUtility)
-                        LastCommandWasUtility = false;
-                    else
+                    if (!LastCommandWasUtility)
                         SwitchPlayers();
+                    LastCommandWasUtility = false;
                 }
             }
 
             DisplayBoard();
             AnnounceResult();
+            return true;
         }
-
     }
 }
