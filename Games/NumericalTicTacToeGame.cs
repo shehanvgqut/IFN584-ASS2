@@ -11,38 +11,29 @@ namespace IFN584_ASS2.Games
 {
     public class NumericalTicTacToeGame : GameTemplate
     {
-        // Internal game state (not directly serialized)
         [JsonIgnore] private int[,] board;
         [JsonIgnore] private bool isLoadedGame = false;
 
-        // Serialized representations
         [JsonInclude] public int[][] BoardData { get; set; }
         [JsonInclude] public int BoardSize { get; set; }
         [JsonInclude] public int TargetSum { get; set; }
         [JsonInclude] public HashSet<int> UsedNumbers { get; set; } = new();
 
-        /// <summary>
-        /// Call this immediately after loading to skip re-initialization prompts.
-        /// </summary>
         public void MarkAsLoaded() => isLoadedGame = true;
 
         protected override void Initialize()
         {
             if (isLoadedGame)
             {
-                // Reconstruct internal board from serialized data
                 board = new int[BoardSize, BoardSize];
                 for (int i = 0; i < BoardSize; i++)
                     for (int j = 0; j < BoardSize; j++)
                         board[i, j] = BoardData[i][j];
 
-                ConsoleRenderer.RenderMessage(
-                    $"🎯 Resuming Numerical Tic-Tac-Toe {BoardSize}x{BoardSize}. Target sum: {TargetSum}"
-                );
+                ConsoleRenderer.RenderMessage($"Resuming Numerical Tic-Tac-Toe {BoardSize}x{BoardSize}. Target sum: {TargetSum}");
                 return;
             }
 
-            // ── Start of New-game prompt block ──
             Console.Write("Enter board size (e.g. 3 for 3x3): ");
             int parsedSize;
             while (!int.TryParse(Console.ReadLine(), out parsedSize) || parsedSize < 2)
@@ -54,48 +45,23 @@ namespace IFN584_ASS2.Games
             TargetSum = BoardSize * (BoardSize * BoardSize + 1) / 2;
             board = new int[BoardSize, BoardSize];
             UsedNumbers = new HashSet<int>();
-            // ── End of New-game prompt block ──
 
-            ConsoleRenderer.RenderMessage(
-                $"🎯 Starting Numerical Tic-Tac-Toe {BoardSize}x{BoardSize}. Target sum: {TargetSum}"
-            );
+            ConsoleRenderer.RenderMessage($"Starting Numerical Tic-Tac-Toe {BoardSize}x{BoardSize}. Target sum: {TargetSum}");
         }
 
-
-
-        protected override void DisplayBoard() =>
-            ConsoleRenderer.RenderBoard(board);
-
-        protected override void MakeMove(int input) =>
-            ConsoleRenderer.ShowError("Direct input not supported. Use row/col format.");
+        protected override void DisplayBoard() => ConsoleRenderer.RenderBoard(board);
+        protected override void MakeMove(int input) => ConsoleRenderer.ShowError("Direct input not supported. Use row/col format.");
+        protected override void MakeMoveWithCoords(int input, int row, int col) => TryMakeMove(input, row, col);
 
         private bool TryMakeMove(int input, int row, int col)
         {
             int max = BoardSize * BoardSize;
-            if (input < 1 || input > max)
+            if (input < 1 || input > max || UsedNumbers.Contains(input)
+                || (CurrentPlayer.IsOddPlayer && input % 2 == 0)
+                || (!CurrentPlayer.IsOddPlayer && input % 2 != 0)
+                || row < 0 || row >= BoardSize || col < 0 || col >= BoardSize || board[row, col] != 0)
             {
-                ConsoleRenderer.ShowError($"🚫 Input must be between 1 and {max}.");
-                return false;
-            }
-            if (UsedNumbers.Contains(input))
-            {
-                ConsoleRenderer.ShowError("🚫 That number has already been used.");
-                return false;
-            }
-            if ((CurrentPlayer.IsOddPlayer && input % 2 == 0) ||
-                (!CurrentPlayer.IsOddPlayer && input % 2 != 0))
-            {
-                ConsoleRenderer.ShowError("🚫 You must use your assigned number type (odd/even).");
-                return false;
-            }
-            if (row < 0 || row >= BoardSize || col < 0 || col >= BoardSize)
-            {
-                ConsoleRenderer.ShowError("🚫 Row or column out of bounds.");
-                return false;
-            }
-            if (board[row, col] != 0)
-            {
-                ConsoleRenderer.ShowError("🚫 That spot is already taken.");
+                ConsoleRenderer.ShowError("Invalid move.");
                 return false;
             }
 
@@ -104,9 +70,6 @@ namespace IFN584_ASS2.Games
             GameState.RecordMove(new Move(row, col, input));
             return true;
         }
-
-        protected override void MakeMoveWithCoords(int input, int row, int col) =>
-            TryMakeMove(input, row, col);
 
         protected override bool IsGameOver()
         {
@@ -141,14 +104,13 @@ namespace IFN584_ASS2.Games
         protected override void AnnounceResult()
         {
             if (UsedNumbers.Count == BoardSize * BoardSize)
-                ConsoleRenderer.RenderMessage("🤝 It's a draw!");
+                ConsoleRenderer.RenderMessage("It's a draw.");
             else
-                ConsoleRenderer.RenderMessage($"🏆 {CurrentPlayer.Name} wins!");
+                ConsoleRenderer.RenderMessage($"{CurrentPlayer.Name} wins!");
         }
 
         protected override void SaveGame()
         {
-            // Populate jagged BoardData for JSON serialization
             BoardData = Enumerable.Range(0, BoardSize)
                 .Select(i => Enumerable.Range(0, BoardSize)
                                        .Select(j => board[i, j])
@@ -158,12 +120,10 @@ namespace IFN584_ASS2.Games
             FileManager.Save(this);
         }
 
-        protected override void ShowHelp() =>
-            HelpProvider.ShowHelp("numerical");
+        protected override void ShowHelp() => HelpProvider.ShowHelp("numerical");
 
-        public override void Play()
+        public override bool Play()
         {
-            // Always initialize or reconstruct the board
             Initialize();
 
             while (!IsGameOver())
@@ -180,7 +140,7 @@ namespace IFN584_ASS2.Games
                 bool moved = false;
                 while (!moved)
                 {
-                    ConsoleRenderer.PromptPlayer(CurrentPlayer.Name);
+                    Console.Write($"{CurrentPlayer.Name}, enter your move or command (undo, redo, save, help, menu): ");
                     string? cmd = Console.ReadLine()?.Trim().ToLower();
 
                     switch (cmd)
@@ -189,6 +149,11 @@ namespace IFN584_ASS2.Games
                         case "undo": Undo(); moved = true; continue;
                         case "redo": Redo(); moved = true; continue;
                         case "save": SaveGame(); moved = true; continue;
+                        case "menu":
+                        case "back":
+                        case "back to menu":
+                            ConsoleRenderer.ShowMessage("Returning to main menu...", ConsoleColor.Yellow);
+                            return false;
                     }
 
                     if (int.TryParse(cmd, out int num))
@@ -201,20 +166,19 @@ namespace IFN584_ASS2.Games
                     }
                     else
                     {
-                        ConsoleRenderer.ShowError("🚫 Invalid input.");
+                        ConsoleRenderer.ShowError("Invalid input.");
                     }
                 }
 
-                if (!IsGameOver())
-                    SwitchPlayers();
+                if (!IsGameOver()) SwitchPlayers();
             }
 
             DisplayBoard();
             AnnounceResult();
+            return true;
         }
 
-        protected override bool IsComputerTurn() =>
-            CurrentPlayer.Name == "Computer";
+        protected override bool IsComputerTurn() => CurrentPlayer.Name == "Computer";
 
         protected override void MakeComputerMove()
         {
@@ -224,7 +188,6 @@ namespace IFN584_ASS2.Games
                                   .ToList();
             var rnd = new Random();
 
-            // Try winning move
             foreach (var num in valid)
                 for (int r = 0; r < BoardSize; r++)
                     for (int c = 0; c < BoardSize; c++)
@@ -235,7 +198,6 @@ namespace IFN584_ASS2.Games
                             board[r, c] = 0;
                         }
 
-            // Otherwise random
             while (true)
             {
                 int r = rnd.Next(BoardSize), c = rnd.Next(BoardSize);
@@ -252,18 +214,18 @@ namespace IFN584_ASS2.Games
             var m1 = GameState.Undo();
             if (m1 == null)
             {
-                ConsoleRenderer.ShowMessage("ℹ️ No moves to undo.", ConsoleColor.Yellow);
+                ConsoleRenderer.ShowMessage("No moves to undo.", ConsoleColor.Yellow);
                 return;
             }
             if (IsComputerTurn())
             {
-                ConsoleRenderer.ShowMessage("↩️ Move undone. It's your turn again.", ConsoleColor.Cyan);
+                ConsoleRenderer.ShowMessage("Move undone. It's your turn again.", ConsoleColor.Cyan);
                 return;
             }
             var m2 = GameState.Undo();
             if (m2 != null)
             {
-                ConsoleRenderer.ShowMessage("↩️ Reverted both moves. Your turn.", ConsoleColor.Cyan);
+                ConsoleRenderer.ShowMessage("Reverted both moves. Your turn.", ConsoleColor.Cyan);
                 SwitchPlayers();
             }
         }

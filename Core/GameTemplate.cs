@@ -13,11 +13,10 @@ namespace IFN584_ASS2.Core
 
         public Player ComputerPlayer { get; set; }
 
-        // Default limits for 3×3 games
         protected virtual int MaxRow => 2;
         protected virtual int MaxCol => 2;
 
-        public virtual void Play()
+        public virtual bool Play()
         {
             Initialize();
 
@@ -36,7 +35,7 @@ namespace IFN584_ASS2.Core
                 bool validInput = false;
                 while (!validInput)
                 {
-                    ConsoleRenderer.PromptPlayer(CurrentPlayer.Name);
+                    Console.Write($"{CurrentPlayer.Name}, enter your move or command (undo, redo, save, help, menu): ");
                     string? input = Console.ReadLine()?.Trim().ToLower();
                     LastCommandWasUtility = false;
 
@@ -64,6 +63,12 @@ namespace IFN584_ASS2.Core
                             validInput = true;
                             break;
 
+                        case "menu":
+                        case "back":
+                        case "back to menu":
+                            ConsoleRenderer.ShowMessage("Returning to the main menu...", ConsoleColor.Yellow);
+                            return false;
+
                         default:
                             if (int.TryParse(input, out int num))
                             {
@@ -71,21 +76,21 @@ namespace IFN584_ASS2.Core
                                 {
                                     if (!IsMoveNumberValid(num))
                                     {
-                                        ConsoleRenderer.ShowError("🚫 That number is invalid or already used. Try another.");
+                                        ConsoleRenderer.ShowError("That number is invalid or already used. Try another.");
                                         break;
                                     }
 
                                     Console.Write($"Enter row (0–{MaxRow}): ");
                                     if (!int.TryParse(Console.ReadLine(), out int row) || row < 0 || row > MaxRow)
                                     {
-                                        ConsoleRenderer.ShowError($"🚫 Invalid row. Please enter 0 to {MaxRow}.");
+                                        ConsoleRenderer.ShowError($"Invalid row. Please enter 0 to {MaxRow}.");
                                         break;
                                     }
 
                                     Console.Write($"Enter col (0–{MaxCol}): ");
                                     if (!int.TryParse(Console.ReadLine(), out int col) || col < 0 || col > MaxCol)
                                     {
-                                        ConsoleRenderer.ShowError($"🚫 Invalid column. Please enter 0 to {MaxCol}.");
+                                        ConsoleRenderer.ShowError($"Invalid column. Please enter 0 to {MaxCol}.");
                                         break;
                                     }
 
@@ -94,12 +99,12 @@ namespace IFN584_ASS2.Core
                                 }
                                 catch (Exception ex)
                                 {
-                                    ConsoleRenderer.ShowError($"❌ Error: {ex.Message}");
+                                    ConsoleRenderer.ShowError($"Error: {ex.Message}");
                                 }
                             }
                             else
                             {
-                                ConsoleRenderer.ShowError("🚫 Invalid command or input.");
+                                ConsoleRenderer.ShowError("Invalid command or input.");
                             }
                             break;
                     }
@@ -115,6 +120,7 @@ namespace IFN584_ASS2.Core
 
             DisplayBoard();
             AnnounceResult();
+            return true;
         }
 
         public Player Player1
@@ -137,7 +143,7 @@ namespace IFN584_ASS2.Core
 
         protected abstract void Initialize();
         protected abstract void DisplayBoard();
-        public void ShowBoard() => DisplayBoard(); // Optional public wrapper
+        public void ShowBoard() => DisplayBoard();
 
         protected abstract void MakeMove(int input);
         protected abstract bool IsGameOver();
@@ -167,25 +173,33 @@ namespace IFN584_ASS2.Core
 
         protected virtual void ShowHelp()
         {
-            HelpMenu.Show();
+            Console.WriteLine();
+            Console.WriteLine("Available commands:");
+            Console.WriteLine("  undo   - Revert the last move");
+            Console.WriteLine("  redo   - Reapply the last undone move");
+            Console.WriteLine("  save   - Save the current game state");
+            Console.WriteLine("  help   - Show this help menu");
+            Console.WriteLine("  menu   - Return to the main menu");
+            Console.WriteLine("  Or enter a number to make a move, followed by row and column.");
+            Console.WriteLine();
         }
 
         protected virtual void Undo()
         {
             var move = GameState.Undo();
             if (move == null)
-                ConsoleRenderer.ShowMessage("ℹ️ No moves to undo.", ConsoleColor.Yellow);
+                ConsoleRenderer.ShowMessage("No moves to undo.", ConsoleColor.Yellow);
             else
-                ConsoleRenderer.ShowMessage($"↩️ Undo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
+                ConsoleRenderer.ShowMessage($"Undo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
         }
 
         protected virtual void Redo()
         {
             var move = GameState.Redo();
             if (move == null)
-                ConsoleRenderer.ShowMessage("ℹ️ No moves to redo.", ConsoleColor.Yellow);
+                ConsoleRenderer.ShowMessage("No moves to redo.", ConsoleColor.Yellow);
             else
-                ConsoleRenderer.ShowMessage($"↪️ Redo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
+                ConsoleRenderer.ShowMessage($"Redo successful. It's still {CurrentPlayer.Name}'s turn.", ConsoleColor.Cyan);
         }
 
         #endregion
